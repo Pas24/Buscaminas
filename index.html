@@ -1,0 +1,209 @@
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Juego buscaminas</title>
+  <style>
+    #box-1 {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-around;
+      border-style: solid;
+      margin-bottom: 10px;
+    }
+
+    .title {
+      margin: auto;
+      text-align: center;
+    }
+
+    table {
+      align-items: center;
+      margin: auto;
+      border: solid;
+    }
+    td{
+      border: 1px black solid;
+    }
+  </style>
+</head>
+
+<body>
+  <h1 class="title">Buscaminas</h1>
+  <div id="box-1">
+    <div>
+      <h2>Nuevo juego</h2>
+      <p>Nombre: <input type="text" name="name" id="name"></p>
+      <p>Filas: <input type="number" name="rows" id="rows"></p>
+      <p>Columnas: <input type="number" name="columns" id="columns"></p>
+      <p>Minas: <input type="number" name="mines" id="mines"></p>
+
+      <p><input type="submit" value="Crear" onclick="createGame()"></p>
+    </div>
+    <div>
+      <h2>Continuar</h2>
+      <select name="progres" id="inProgres" onChange="selectItem(this)"></select>
+    </div>
+  </div>
+  <div id="tabla">
+    <table id="game">
+    </table>
+  </div>
+</body>
+
+<script type="text/javascript">
+  var tabla = document.getElementById("game")
+
+  function createGame() {
+    var tabla = document.getElementById("game")
+    tabla.innerHTML = ""
+
+    fetch('http://127.0.0.1:3000/games', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: document.getElementById('name').value,
+        rows: document.getElementById('rows').value,
+        columns: document.getElementById('columns').value,
+        mines: document.getElementById('mines').value,
+        score: "0",
+        status: 1
+      }),
+      headers: {
+        "Content-type": "application/json"
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log(data)
+      var rows = document.getElementById('rows').value
+      var columns = document.getElementById('columns').value
+
+      for (var i = 0; i < rows; i++) {
+        var tr = document.createElement("tr")
+        tabla.appendChild(tr)
+        for (var j = 0; j < columns; j++) {
+          var td = document.createElement("td")
+
+          data.forEach(item => {
+            if (item.row == i && item.column == j) {
+              td.innerHTML = item.id
+              td.setAttribute('name', 'r' + item.row + 'c' + item.column)
+              td.setAttribute("style", "background-color: black");
+              td.onclick = function () { playGame(this) }
+              tr.appendChild(td)
+            }
+          })
+        }
+      }
+      reload()
+    })
+  }
+
+  function generateGame(id) {
+    tabla.innerHTML = ""
+
+    fetch('http://127.0.0.1:3000/game/tables/' + id)
+    .then(response => response.json())
+    .then(data => {
+      console.log(data)
+      var rows = data[0].tables.rows
+      var columns = data[0].tables.columns
+
+      for (var i = 0; i < rows; i++) {
+        var tr = document.createElement("tr")
+        tabla.appendChild(tr)
+        for (var j = 0; j < columns; j++) {
+        var td = document.createElement("td")
+
+        data.forEach(item => {
+          if (item.row == i && item.column == j) {
+            td.innerHTML = item.id
+            td.setAttribute('name', 'r' + item.row + 'c' + item.column)
+            if (item.is_select) {
+              td.setAttribute("style", "background-color: white");
+              td.setAttribute("style", "color: white");
+            }else{
+              td.setAttribute("style", "background-color: black");
+            }
+            td.onclick = function () { playGame(this) }
+            tr.appendChild(td)
+          }
+        })
+        }
+      }
+    })
+  }
+
+  function playGame(item) {
+    fetch('http://127.0.0.1:3000/game_tables/' + item.innerHTML)
+    .then(response => response.json())
+    .then(obj => {
+      if (obj.is_mine) {
+        //actualizar la partida como perdida ya que dio click a la partida
+        fetch('http://127.0.0.1:3000/games/' + obj.tables.id, {
+          method: 'PUT',
+          body: JSON.stringify({
+            status: 0
+          }),
+          headers: {
+            "Content-type": "application/json"
+          }
+        })
+        .then(response => response.json())
+        .then(data => {
+
+        alert("PERDISTES")
+        tabla.innerHTML = ""
+
+        reload()
+        })  
+      }
+
+      //Si no es mina
+      else {
+        if (!obj.is_select) {
+          fetch('http://127.0.0.1:3000/game_tables/' + obj.id, {
+          method: 'PUT',
+          body: JSON.stringify({
+            is_select: true,
+            is_band: false
+          }),
+          headers: {
+            "Content-type": "application/json"
+          }
+          })
+          .then(response => response.json())
+          .then(data => {
+           generateGame(obj.tables.id) 
+          }) 
+        }
+      }
+    });
+  }
+
+  reload()
+
+  function reload() {
+    var selectItem = document.getElementById("inProgres")
+    selectItem.innerHTML = ""
+    fetch('http://127.0.0.1:3000/games')
+    .then(response => response.json())
+    .then(data => {
+      var op = document.createElement("option");
+      op.text = "Selecciona"
+      op.value = -1
+      selectItem.add(op)
+
+      data.forEach(item => {
+        var op = document.createElement("option");
+        op.text = item.name
+        op.value = item.id
+        selectItem.add(op)
+      })
+    });
+  }
+
+  function selectItem(item) {
+    generateGame(item.value)
+  }
+</script>
+</html>

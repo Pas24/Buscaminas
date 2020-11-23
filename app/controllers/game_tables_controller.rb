@@ -13,16 +13,11 @@ class GameTablesController < ApplicationController
     render json: @game_table, status: :ok
   end
 
-  # POST /game_tables
-  def create
-    @game_table = GameTable.create!(create_params)
-    render json: @game_table, status: :created
-  end
-
   # PUT /game_tables/{id}
   def update
     @game_table = GameTable.find(params[:id])
-    @game_table.update!(update_params)
+    @game_table.update is_select: params[:is_select]
+    @game_table.update is_band: params[:is_band]
     render json: @game_table, status: :ok
   end
 
@@ -31,14 +26,4 @@ class GameTablesController < ApplicationController
     @game = GameTable.where(game_id: params[:game_id])
     render json: @game, status: :ok
   end
-
-  private
-
-  def create_params
-    params.required(:game_tables).permit(:row, :column, :is_select, :is_mine, :is_band, :game_id)
-  end
-
-  def update_params
-    params.required(:game_tables).permit(:is_select, is_band)
-  end   
 end
